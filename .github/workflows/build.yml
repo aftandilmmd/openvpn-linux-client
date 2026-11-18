@@ -40,6 +40,13 @@ jobs:
         run: |
           cargo build --manifest-path src-tauri/Cargo.toml --example probe
           sudo PROBE="$PWD/src-tauri/target/debug/examples/probe" scripts/e2e/run.sh
+      - name: openvpn3 diagnostics
+        if: failure()
+        run: |
+          openvpn3 version || true
+          openvpn3 configs-list || true
+          busctl --system list | grep -i openvpn || true
+          sudo journalctl --no-pager -b | grep -iE "openvpn|dbus-daemon" | tail -80 || true
 
   build:
     name: Build ${{ matrix.arch }}
