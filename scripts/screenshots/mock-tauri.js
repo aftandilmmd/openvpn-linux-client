@@ -17,7 +17,7 @@
       return [{
         path: "/net/openvpn/v3/sessions/1", config_path: profiles[0].path, config_name: profiles[0].name,
         status: { major: 2, minor: 7, message: "" }, device: "tun0",
-        server: { proto: "udp", ip: "185.62.18.44", port: 1194 },
+        server: { proto: "udp", ip: "203.0.113.42", port: 1194 },
         created: now - (2 * 3600 + 17 * 60 + 42),
         stats: { BYTES_IN: bytesIn, BYTES_OUT: bytesOut },
       }];
