@@ -29,7 +29,7 @@
       "rpm",
       "appimage"
     ],
-    "category": "Network",
+    "category": "Utility",
     "shortDescription": "Desktop client for OpenVPN 3",
     "longDescription": "Import .ovpn profiles and connect with one click. Uses the openvpn3-linux services.",
     "icon": [
