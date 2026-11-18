@@ -2,7 +2,7 @@
 //!
 //! API reference: https://github.com/OpenVPN/openvpn3-linux/tree/master/docs/dbus
 
-use std::{collections::HashMap, path::Path, time::Duration};
+use std::{collections::HashMap, future::Future, path::Path, time::Duration};
 
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -191,6 +191,33 @@ pub fn err(e: zbus::Error) -> String {
 
 type R<T> = Result<T, String>;
 
+/// openvpn3 services start on demand and exit when idle. Right after
+/// activation their objects are not registered yet, so the first calls are
+/// retried for a few seconds.
+async fn with_retry<T, F, Fut>(mut call: F) -> zbus::Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = zbus::Result<T>>,
+{
+    let mut tries = 0;
+    loop {
+        match call().await {
+            Err(e) if tries < 20 && service_starting(&e) => {
+                tries += 1;
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            result => return result,
+        }
+    }
+}
+
+fn service_starting(e: &zbus::Error) -> bool {
+    let msg = e.to_string();
+    ["does not exist", "ServiceUnknown", "UnknownObject", "NoReply"]
+        .iter()
+        .any(|needle| msg.contains(needle))
+}
+
 #[derive(Clone)]
 pub struct Client {
     conn: Connection,
@@ -205,7 +232,7 @@ impl Client {
 
     pub async fn version(&self) -> R<String> {
         let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
-        mgr.version().await.map_err(err)
+        with_retry(|| mgr.version()).await.map_err(err)
     }
 
     async fn profile(&self, path: &str) -> R<ConfigProfileProxy<'static>> {
@@ -233,7 +260,7 @@ impl Client {
     pub async fn profiles(&self) -> R<Vec<Profile>> {
         let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
         let mut out = Vec::new();
-        for path in mgr.fetch_available_configs().await.map_err(err)? {
+        for path in with_retry(|| mgr.fetch_available_configs()).await.map_err(err)? {
             let path = path.to_string();
             let Ok(p) = self.profile(&path).await else { continue };
             let Ok(name) = p.name().await else { continue };
@@ -263,7 +290,7 @@ impl Client {
                 .unwrap_or_else(|| "VPN profile".into()),
         };
         let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
-        let path = mgr.import(&name, &config, false, true).await.map_err(err)?;
+        let path = with_retry(|| mgr.import(&name, &config, false, true)).await.map_err(err)?;
         Ok(path.to_string())
     }
 
@@ -274,7 +301,7 @@ impl Client {
     pub async fn sessions(&self) -> R<Vec<SessionInfo>> {
         let mgr = SessionManagerProxy::new(&self.conn).await.map_err(err)?;
         let mut out = Vec::new();
-        for path in mgr.fetch_available_sessions().await.map_err(err)? {
+        for path in with_retry(|| mgr.fetch_available_sessions()).await.map_err(err)? {
             let path = path.to_string();
             let Ok(s) = self.session(&path).await else { continue };
             let Ok(config_path) = s.config_path().await else { continue };
@@ -317,7 +344,7 @@ impl Client {
     pub async fn start(&self, config_path: &str) -> R<ConnectOutcome> {
         let cfg = ObjectPath::try_from(config_path).map_err(|e| e.to_string())?;
         let mgr = SessionManagerProxy::new(&self.conn).await.map_err(err)?;
-        let session = mgr.new_tunnel(&cfg).await.map_err(err)?.to_string();
+        let session = with_retry(|| mgr.new_tunnel(&cfg)).await.map_err(err)?.to_string();
         let s = self.session(&session).await?;
         // Log forwarding is best effort; the connection works without it.
         let _ = s.log_forward(true).await;
