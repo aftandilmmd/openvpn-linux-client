@@ -41,7 +41,7 @@
     "linux": {
       "deb": {
         "recommends": [
-          "openvpn3"
+          "openvpn3-client"
         ]
       },
       "rpm": {

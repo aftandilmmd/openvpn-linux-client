@@ -85,13 +85,36 @@ pub fn install() -> Result<(), String> {
         Some(0) => Ok(()),
         // pkexec: 126 = password dialog dismissed, 127 = not authorized
         Some(126) | Some(127) => Err("Installation was cancelled.".into()),
-        _ => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            let tail: Vec<&str> = stderr.lines().rev().take(6).collect();
-            let tail: Vec<&str> = tail.into_iter().rev().collect();
-            Err(format!("Installing OpenVPN 3 failed.\n{}", tail.join("\n")))
-        }
+        _ => Err(format!(
+            "Installing OpenVPN 3 failed.\n{}",
+            failure_summary(&String::from_utf8_lossy(&out.stderr))
+        )),
     }
+}
+
+/// Picks the lines that explain an installer failure: apt/dnf errors and the
+/// script's own messages, rather than whatever happened to be printed last.
+fn failure_summary(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    let errors: Vec<&str> = lines
+        .iter()
+        .copied()
+        .filter(|l| {
+            l.starts_with("E:")
+                || l.starts_with("Err:")
+                || l.starts_with("Error")
+                || l.contains("Failed to fetch")
+                || l.contains("OpenVPN does not publish")
+                || l.contains("not found.")
+                || l.contains("Unknown distribution")
+        })
+        .collect();
+    let picked = if errors.is_empty() {
+        &lines[lines.len().saturating_sub(4)..]
+    } else {
+        &errors[errors.len().saturating_sub(6)..]
+    };
+    picked.join("\n")
 }
 
 #[cfg(test)]
@@ -117,6 +140,16 @@ mod tests {
             Some(Method::Apt { codename: "bookworm".into() })
         );
         assert_eq!(detect("ID=fedora\nVERSION_ID=41\n"), Some(Method::Dnf));
+    }
+
+    #[test]
+    fn summary_keeps_apt_errors() {
+        let stderr = "Get:1 http://x a\nE: Failed to fetch http://x/g++.deb  Hash Sum mismatch\n   Hashes of expected file:\n    - SHA256:ad24\nE: Unable to fetch some archives\n";
+        assert_eq!(
+            failure_summary(stderr),
+            "E: Failed to fetch http://x/g++.deb  Hash Sum mismatch\nE: Unable to fetch some archives"
+        );
+        assert_eq!(failure_summary("a\nb\nc\nd\ne\n"), "b\nc\nd\ne");
     }
 
     #[test]

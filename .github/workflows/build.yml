@@ -37,6 +37,11 @@ jobs:
         run: |
           cargo build --manifest-path src-tauri/Cargo.toml --example probe
           sudo PROBE="$PWD/src-tauri/target/debug/examples/probe" scripts/e2e/run.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probe
+          path: src-tauri/target/debug/examples/probe
+          retention-days: 3
       - name: openvpn3 diagnostics
         if: failure()
         run: |
@@ -52,9 +57,11 @@ jobs:
       matrix:
         include:
           - image: debian:bookworm
-            run: sh /w/install-openvpn3-apt.sh bookworm && dpkg -s openvpn3 | grep Status
+            run: sh /w/install-openvpn3-apt.sh bookworm && dpkg -s openvpn3-client | grep Status && ! dpkg -s dkms >/dev/null 2>&1 && ! command -v g++ && echo no-toolchain-ok
           - image: ubuntu:24.04
-            run: sh /w/install-openvpn3-apt.sh noble && dpkg -s openvpn3 | grep Status
+            run: sh /w/install-openvpn3-apt.sh noble && dpkg -s openvpn3-client | grep Status && ! dpkg -s dkms >/dev/null 2>&1 && ! command -v g++ && echo no-toolchain-ok
+          - image: ubuntu:26.04
+            run: sh /w/install-openvpn3-apt.sh resolute && dpkg -s openvpn3-client | grep Status && ! dpkg -s dkms >/dev/null 2>&1 && ! command -v g++ && echo no-toolchain-ok
           - image: fedora:latest
             run: sh /w/install-openvpn3-dnf.sh && rpm -q openvpn3-client
     runs-on: ubuntu-latest
@@ -63,9 +70,30 @@ jobs:
       # Bare images without curl or wget also exercise the script's fallback.
       - run: docker run --rm -v "$PWD/src-tauri/scripts:/w:ro" ${{ matrix.image }} sh -c '${{ matrix.run }}'
 
+  e2e-resolute:
+    name: End-to-end on Ubuntu 26.04 (fresh install via the app's script)
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: probe
+          path: probe
+      - name: Install openvpn3 with the app's script, then import, sign in, connect, disconnect
+        run: |
+          chmod +x probe/probe
+          docker run --rm --privileged -v "$PWD:/src:ro" ubuntu:26.04 bash -c '
+            set -e
+            apt-get update -q
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+              dbus openvpn easy-rsa iproute2 libwebkit2gtk-4.1-0 libxdo3
+            sh /src/src-tauri/scripts/install-openvpn3-apt.sh resolute
+            PROBE=/src/probe/probe bash /src/scripts/e2e/run.sh'
+
   build:
     name: Build ${{ matrix.arch }}
-    needs: [e2e, install-scripts]
+    needs: [e2e, e2e-resolute, install-scripts]
     strategy:
       fail-fast: false
       matrix:

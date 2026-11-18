@@ -5,9 +5,17 @@ set -eu
 
 command -v dnf >/dev/null || { echo "dnf not found." >&2; exit 4; }
 
-dnf -y -q install 'dnf-command(copr)'
-dnf -y -q copr enable dsommers/openvpn3
-dnf -y -q install openvpn3-client
+# Weak dependencies would add the optional kernel acceleration module and the
+# toolchain to build it; the client does not need them.
+dnf_() { dnf -y -q --setopt=install_weak_deps=False --setopt=retries=5 "$@"; }
+
+dnf_ install 'dnf-command(copr)'
+dnf_ copr enable dsommers/openvpn3
+if ! dnf_ install openvpn3-client; then
+  echo "Retrying with fresh metadata..." >&2
+  dnf -y -q clean metadata
+  dnf_ install openvpn3-client
+fi
 
 dbus-send --system --type=method_call --dest=org.freedesktop.DBus \
   / org.freedesktop.DBus.ReloadConfig 2>/dev/null || true

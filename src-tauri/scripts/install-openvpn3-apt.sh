@@ -12,6 +12,10 @@ case "$codename" in
 esac
 command -v apt-get >/dev/null || { echo "apt-get not found." >&2; exit 4; }
 
+export DEBIAN_FRONTEND=noninteractive
+# Retry flaky downloads; mirrors are sometimes caught mid-sync.
+apt_get() { apt-get -q -o Acquire::Retries=3 "$@"; }
+
 fetch() {
   if command -v curl >/dev/null; then curl -fsSL "$1"
   elif command -v wget >/dev/null; then wget -qO- "$1"
@@ -20,8 +24,8 @@ fetch() {
 }
 
 if ! command -v curl >/dev/null && ! command -v wget >/dev/null; then
-  apt-get update -q
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -q ca-certificates curl
+  apt_get update
+  apt_get install -y --no-install-recommends ca-certificates curl
 fi
 
 if ! fetch "$repo/dists/$codename/Release" >/dev/null; then
@@ -34,8 +38,18 @@ fetch https://packages.openvpn.net/packages-repo.gpg > /etc/apt/keyrings/openvpn
 echo "deb [signed-by=/etc/apt/keyrings/openvpn.asc] $repo $codename main" \
   > /etc/apt/sources.list.d/openvpn3.list
 
-apt-get update -q
-DEBIAN_FRONTEND=noninteractive apt-get install -y -q openvpn3
+# openvpn3-client is the VPN client itself. Its only recommendation is the
+# optional kernel acceleration module (openvpn-dco-dkms), which would pull in
+# dkms, compilers and kernel headers to build it locally; skip that.
+install_client() {
+  apt_get update
+  apt_get install -y --no-install-recommends openvpn3-client
+}
+if ! install_client; then
+  echo "Retrying with fresh package lists..." >&2
+  sleep 5
+  install_client
+fi
 
 # openvpn3 adds D-Bus policies for its new system user; make sure the bus
 # has loaded them before the app talks to the services.

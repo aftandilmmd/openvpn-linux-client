@@ -451,12 +451,15 @@ async function showSetup(error) {
   const info = await invoke("setup_info").catch(() => ({ automatic: false, distro: "this system", help_url: "" }));
   const status = el("div", "setup-status");
   const actions = el("div", "setup-actions");
+  // The raw D-Bus error only helps before an install attempt.
+  const detail = el("code", null, error);
 
   if (info.automatic) {
     const btn = el("button", "primary", "Install OpenVPN 3");
     btn.onclick = async () => {
       btn.disabled = true;
       btn.textContent = "Installing…";
+      detail.remove();
       status.textContent = "Enter your password when asked. This can take a minute.";
       try {
         await invoke("install_openvpn3");
@@ -483,7 +486,7 @@ async function showSetup(error) {
       : `This app connects through OpenVPN 3. Automatic installation isn't available for ${info.distro}; install the openvpn3 package, then reopen the app.`),
     actions,
     status,
-    el("code", null, error),
+    detail,
   );
   box.className = "notice setup";
   render();
