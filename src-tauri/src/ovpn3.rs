@@ -231,8 +231,26 @@ impl Client {
     }
 
     pub async fn version(&self) -> R<String> {
-        let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
+        let mgr = self.config_manager().await?;
         with_retry(|| mgr.version()).await.map_err(err)
+    }
+
+    // Property caching stays off everywhere: a cache filled while a service
+    // is still starting would keep returning that startup error.
+    async fn config_manager(&self) -> R<ConfigManagerProxy<'static>> {
+        ConfigManagerProxy::builder(&self.conn)
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await
+            .map_err(err)
+    }
+
+    async fn session_manager(&self) -> R<SessionManagerProxy<'static>> {
+        SessionManagerProxy::builder(&self.conn)
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await
+            .map_err(err)
     }
 
     async fn profile(&self, path: &str) -> R<ConfigProfileProxy<'static>> {
@@ -258,7 +276,7 @@ impl Client {
     }
 
     pub async fn profiles(&self) -> R<Vec<Profile>> {
-        let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
+        let mgr = self.config_manager().await?;
         let mut out = Vec::new();
         for path in with_retry(|| mgr.fetch_available_configs()).await.map_err(err)? {
             let path = path.to_string();
@@ -289,7 +307,7 @@ impl Client {
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "VPN profile".into()),
         };
-        let mgr = ConfigManagerProxy::new(&self.conn).await.map_err(err)?;
+        let mgr = self.config_manager().await?;
         let path = with_retry(|| mgr.import(&name, &config, false, true)).await.map_err(err)?;
         Ok(path.to_string())
     }
@@ -299,7 +317,7 @@ impl Client {
     }
 
     pub async fn sessions(&self) -> R<Vec<SessionInfo>> {
-        let mgr = SessionManagerProxy::new(&self.conn).await.map_err(err)?;
+        let mgr = self.session_manager().await?;
         let mut out = Vec::new();
         for path in with_retry(|| mgr.fetch_available_sessions()).await.map_err(err)? {
             let path = path.to_string();
@@ -343,7 +361,7 @@ impl Client {
     /// credentials the backend asks for first.
     pub async fn start(&self, config_path: &str) -> R<ConnectOutcome> {
         let cfg = ObjectPath::try_from(config_path).map_err(|e| e.to_string())?;
-        let mgr = SessionManagerProxy::new(&self.conn).await.map_err(err)?;
+        let mgr = self.session_manager().await?;
         let session = with_retry(|| mgr.new_tunnel(&cfg)).await.map_err(err)?.to_string();
         let s = self.session(&session).await?;
         // Log forwarding is best effort; the connection works without it.
