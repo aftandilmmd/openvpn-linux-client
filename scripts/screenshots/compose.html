@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 2000px; height: 1250px; overflow: hidden; font-family: Inter, sans-serif; }
+  .stage {
+    position: relative; width: 100%; height: 100%;
+    display: grid; grid-template-columns: 1fr 600px; align-items: center;
+    padding: 0 150px 0 140px; gap: 80px;
+    color: #fff; overflow: hidden;
+  }
+  .light {
+    background:
+      radial-gradient(900px 700px at 8% 10%, #34d399 0%, transparent 60%),
+      radial-gradient(900px 800px at 60% 110%, #6366f1 0%, transparent 60%),
+      radial-gradient(800px 700px at 100% 0%, #0ea5e9 0%, transparent 60%),
+      linear-gradient(135deg, #10b981, #0ea5e9 55%, #6366f1);
+  }
+  .dark {
+    background:
+      radial-gradient(900px 700px at 0% 100%, rgba(16,185,129,.55) 0%, transparent 60%),
+      radial-gradient(1000px 800px at 85% 0%, rgba(99,102,241,.55) 0%, transparent 60%),
+      linear-gradient(135deg, #07131a, #0b1b2b 50%, #151233);
+  }
+  .stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(90deg, #000 0%, transparent 55%);
+  }
+  .copy { position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: 26px; font-weight: 600; letter-spacing: .02em;
+    padding: 10px 22px 10px 14px; border-radius: 999px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+    backdrop-filter: blur(8px); margin-bottom: 44px;
+  }
+  .eyebrow img { width: 40px; height: 40px; }
+  h1 { font-size: 104px; line-height: 1.04; font-weight: 800; letter-spacing: -.035em; }
+  p.sub { margin-top: 36px; font-size: 38px; line-height: 1.38; font-weight: 400; opacity: .9; max-width: 860px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 48px; }
+  .chip {
+    font-size: 25px; font-weight: 600; padding: 12px 22px; border-radius: 14px;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24);
+  }
+  .window {
+    position: relative; z-index: 1; width: 600px; border-radius: 22px; overflow: hidden;
+    box-shadow: 0 60px 120px -20px rgba(4, 12, 40, .55), 0 0 0 1px rgba(255,255,255,.18);
+  }
+  .titlebar {
+    height: 56px; display: grid; place-items: center; position: relative;
+    font-size: 21px; font-weight: 700;
+  }
+  .light .titlebar { background: #ebedf0; color: #1d2329; border-bottom: 1px solid #d8dce0; }
+  .dark .titlebar { background: #22282f; color: #e8ecf0; border-bottom: 1px solid #12161a; }
+  .close {
+    position: absolute; right: 14px; top: 13px; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+  }
+  .light .close { background: #d9dde1; }
+  .dark .close { background: #3a424b; }
+  .close::before, .close::after {
+    content: ""; position: absolute; width: 14px; height: 2.6px; border-radius: 2px; background: currentColor;
+    transform: rotate(45deg);
+  }
+  .close::after { transform: rotate(-45deg); }
+  .window img.shot { display: block; width: 600px; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="copy">
+      <div class="eyebrow"><img src="../../src-tauri/icons/128x128@2x.png" alt="">Tunnelo for Linux</div>
+      <h1 id="h1"></h1>
+      <p class="sub" id="sub"></p>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="window">
+      <div class="titlebar">Tunnelo<span class="close"></span></div>
+      <img class="shot" id="shot" alt="">
+    </div>
+  </div>
+<script>
+  const q = new URLSearchParams(location.search);
+  document.getElementById("stage").classList.add(q.get("theme") || "light");
+  document.getElementById("shot").src = q.get("img");
+  document.getElementById("h1").innerHTML = q.get("h1");
+  document.getElementById("sub").textContent = q.get("sub");
+  for (const c of (q.get("chips") || "").split("|").filter(Boolean)) {
+    const el = document.createElement("span"); el.className = "chip"; el.textContent = c;
+    document.getElementById("chips").append(el);
+  }
+</script>
+</body>
+</html>

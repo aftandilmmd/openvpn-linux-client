@@ -1,0 +1,99 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: End-to-end (openvpn3-linux + test server)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev openvpn easy-rsa
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://packages.openvpn.net/packages-repo.gpg | sudo tee /etc/apt/keyrings/openvpn.asc >/dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/openvpn.asc] https://packages.openvpn.net/openvpn3/debian jammy main" | sudo tee /etc/apt/sources.list.d/openvpn3.list
+          sudo apt-get update -q
+          sudo apt-get install -y -q openvpn3
+      - name: Unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Import, sign in, connect, disconnect
+        run: |
+          cargo build --manifest-path src-tauri/Cargo.toml --example probe
+          sudo PROBE="$PWD/src-tauri/target/debug/examples/probe" scripts/e2e/run.sh
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+    # Ubuntu 22.04 (glibc 2.35) so the packages also run on older distributions.
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev xdg-utils
+          npm ci
+
+      - name: Version from release tag
+        if: github.event_name == 'release'
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          jq --arg v "$v" '.version = $v' src-tauri/tauri.conf.json > tmp.json && mv tmp.json src-tauri/tauri.conf.json
+          sed -i "0,/^version = .*/s//version = \"$v\"/" src-tauri/Cargo.toml
+
+      - name: Build and attach to release (signed for in-app updates)
+        if: github.event_name == 'release'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ github.event.release.id }}
+
+      - name: Build (no update signing)
+        if: github.event_name != 'release'
+        run: npx tauri build -c '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tunnelo-linux-${{ matrix.arch }}
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
