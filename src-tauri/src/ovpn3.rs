@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn inlines_referenced_files() {
-        let dir = std::env::temp_dir().join("tunnelo-inline-test");
+        let dir = std::env::temp_dir().join("openvpn-client-inline-test");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("ca.crt"), "CERTDATA\n").unwrap();
         std::fs::write(dir.join("ta.key"), "TAKEY\n").unwrap();

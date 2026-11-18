@@ -1,5 +1,5 @@
 # openvpn3-linux client + an OpenVPN 2 test server in one container.
-FROM tunnelo-build
+FROM openvpn-client-build
 RUN apt-get update && apt-get install -y --no-install-recommends gnupg dbus openvpn easy-rsa iproute2 \
  && mkdir -p /etc/apt/keyrings \
  && curl -fsSL https://packages.openvpn.net/packages-repo.gpg > /etc/apt/keyrings/openvpn.asc \

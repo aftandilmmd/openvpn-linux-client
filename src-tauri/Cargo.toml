@@ -1,12 +1,12 @@
 [package]
-name = "tunnelo"
+name = "openvpn-linux-client"
 version = "0.1.0"
 description = "Desktop client for OpenVPN 3 on Linux"
 edition = "2021"
 repository = "https://github.com/aftandilmmd/openvpn-linux-client"
 
 [lib]
-name = "tunnelo_lib"
+name = "openvpn_linux_client_lib"
 crate-type = ["rlib"]
 
 [build-dependencies]

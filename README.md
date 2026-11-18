@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" height="128" alt="Tunnelo icon">
+  <img src="docs/icon.png" width="128" height="128" alt="App icon">
 </p>
 
-<h1 align="center">Tunnelo</h1>
+<h1 align="center">Linux Client for OpenVPN</h1>
 
 <p align="center">
   <strong>Flip one switch. You're private.</strong><br>
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/hero.png" width="860" alt="Tunnelo connected to a VPN, light mode">
+  <img src="docs/hero.png" width="860" alt="Connected to a VPN, light mode">
 </p>
 
 ## Features
@@ -27,10 +27,10 @@
 - **Light and dark mode**, following your desktop.
 
 <p align="center">
-  <img src="docs/hero-dark.png" width="860" alt="Tunnelo in dark mode">
+  <img src="docs/hero-dark.png" width="860" alt="Dark mode">
 </p>
 
-Tunnelo uses **openvpn3-linux**, OpenVPN's own Linux client, and talks to its services directly. Tunnels run in those services, not in the window: closing or updating the app keeps you connected, and connecting doesn't need an admin password.
+It uses **openvpn3-linux**, OpenVPN's own Linux client, and talks to its services directly. Tunnels run in those services, not in the window: closing or updating the app keeps you connected, and connecting doesn't need an admin password.
 
 ## Installing
 
@@ -46,17 +46,17 @@ sudo apt update && sudo apt install openvpn3
 
 On Fedora: `sudo dnf copr enable dsommers/openvpn3 && sudo dnf install openvpn3-client`.
 
-**2. Install Tunnelo** from the [latest release](https://github.com/aftandilmmd/openvpn-linux-client/releases/latest):
+**2. Install the app** from the [latest release](https://github.com/aftandilmmd/openvpn-linux-client/releases/latest):
 
-- **Ubuntu / Debian:** `sudo apt install ./Tunnelo_*_amd64.deb` (`arm64` on ARM)
-- **Fedora / openSUSE:** `sudo dnf install ./Tunnelo-*.x86_64.rpm`
-- **Any distribution:** the `.AppImage`. Run `chmod +x Tunnelo_*.AppImage`, then start it.
+- **Ubuntu / Debian:** `sudo apt install ./Linux*_amd64.deb` (`arm64` on ARM)
+- **Fedora / openSUSE:** `sudo dnf install ./Linux*.x86_64.rpm`
+- **Any distribution:** the `.AppImage`. Run `chmod +x Linux*.AppImage`, then start it.
 
-Open Tunnelo, click **+** and choose your `.ovpn` file. Profiles you already imported with the `openvpn3` command line show up automatically.
+Open the app, click **+** and choose your `.ovpn` file. Profiles you already imported with the `openvpn3` command line show up automatically.
 
 ## Updates
 
-Tunnelo checks GitHub for new releases on startup and every few hours. Updates are signed, and the app refuses any file that doesn't match its key. The AppImage updates itself. For the `.deb` and `.rpm` packages your system asks for your password once, because they are installed system-wide.
+The app checks GitHub for new releases on startup and every few hours. Updates are signed, and the app refuses any file that doesn't match its key. The AppImage updates itself. For the `.deb` and `.rpm` packages your system asks for your password once, because they are installed system-wide.
 
 ## FAQ
 
@@ -64,7 +64,7 @@ Tunnelo checks GitHub for new releases on startup and every few hours. Updates a
 No. It's an independent app built on OpenVPN's official open-source Linux client, openvpn3-linux.
 
 **My profile refers to separate `ca.crt` / `client.key` files.**
-That's fine. Keep them next to the `.ovpn` file when importing and Tunnelo embeds them into the profile.
+That's fine. Keep them next to the `.ovpn` file when importing and the app embeds them into the profile.
 
 **It says openvpn3-linux is not available.**
 Install the `openvpn3` package (step 1) and reopen the app.
@@ -85,4 +85,4 @@ Publishing a GitHub release builds both architectures and attaches the packages 
 
 ---
 
-<sub>Tunnelo is not affiliated with OpenVPN Inc. OpenVPN is a registered trademark of OpenVPN Inc.</sub>
+<sub>This project is not affiliated with OpenVPN Inc. OpenVPN is a registered trademark of OpenVPN Inc.</sub>

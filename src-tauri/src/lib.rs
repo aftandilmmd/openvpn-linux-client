@@ -211,5 +211,5 @@ pub fn run() {
             install_update,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Tunnelo");
+        .expect("error while running Linux Client for OpenVPN");
 }

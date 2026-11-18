@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use tunnelo_lib::ovpn3::{Client, ConnectOutcome, InputValue};
+use openvpn_linux_client_lib::ovpn3::{Client, ConnectOutcome, InputValue};
 
 fn main() {
     tauri::async_runtime::block_on(async {
