@@ -80,16 +80,27 @@ jobs:
         with:
           name: probe
           path: probe
-      - name: Install openvpn3 with the app's script, then import, sign in, connect, disconnect
+      # A container that boots systemd, like a real Ubuntu 26.04 machine.
+      - name: Start Ubuntu 26.04 with systemd
         run: |
           chmod +x probe/probe
-          docker run --rm --privileged -v "$PWD:/src:ro" ubuntu:26.04 bash -c '
-            set -e
-            apt-get update -q
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-              dbus openvpn easy-rsa iproute2 libwebkit2gtk-4.1-0 libxdo3
-            sh /src/src-tauri/scripts/install-openvpn3-apt.sh resolute
-            PROBE=/src/probe/probe bash /src/scripts/e2e/run.sh'
+          printf '%s\n' \
+            'FROM ubuntu:26.04' \
+            'RUN apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends systemd systemd-sysv dbus ca-certificates openvpn easy-rsa iproute2 libwebkit2gtk-4.1-0 libxdo3' \
+            'CMD ["/sbin/init"]' > Dockerfile.resolute
+          docker build -q -t resolute-systemd -f Dockerfile.resolute .
+          docker run -d --name box --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v "$PWD:/src:ro" resolute-systemd
+          for i in $(seq 30); do
+            docker exec box test -S /run/dbus/system_bus_socket && break; sleep 1
+          done
+      - name: Install openvpn3 with the app's script
+        run: docker exec box sh /src/src-tauri/scripts/install-openvpn3-apt.sh resolute
+      - name: Import, sign in, connect, disconnect
+        run: docker exec -e PROBE=/src/probe/probe box bash /src/scripts/e2e/run.sh
+      - name: openvpn3 logs
+        if: failure()
+        run: docker exec box journalctl --no-pager -b | grep -iE "openvpn|dbus" | tail -80
 
   build:
     name: Build ${{ matrix.arch }}
