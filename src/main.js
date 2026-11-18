@@ -440,15 +440,64 @@ async function checkBackend() {
     box.classList.add("hidden");
     return true;
   } catch (e) {
-    box.replaceChildren(
-      el("strong", null, "openvpn3-linux is not available."),
-      el("div", null, "Install the openvpn3 package for your distribution, then reopen this app."),
-      el("code", null, String(e)),
-    );
-    box.classList.remove("hidden");
-    render();
+    await showSetup(String(e));
     return false;
   }
+}
+
+// Shown when the openvpn3 services are missing: install them in one click.
+async function showSetup(error) {
+  const box = $("backend-error");
+  const info = await invoke("setup_info").catch(() => ({ automatic: false, distro: "this system", help_url: "" }));
+  const status = el("div", "setup-status");
+  const actions = el("div", "setup-actions");
+
+  if (info.automatic) {
+    const btn = el("button", "primary", "Install OpenVPN 3");
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = "Installing…";
+      status.textContent = "Enter your password when asked. This can take a minute.";
+      try {
+        await invoke("install_openvpn3");
+        status.textContent = "";
+        if (await checkBackend()) startPolling();
+      } catch (e) {
+        status.textContent = String(e);
+        btn.disabled = false;
+        btn.textContent = "Try again";
+      }
+    };
+    actions.append(btn);
+  }
+  if (info.help_url) {
+    const link = el("button", "ghost", info.automatic ? "Install manually" : "Installation guide");
+    link.onclick = () => invoke("open_url", { url: info.help_url }).catch(toast);
+    actions.append(link);
+  }
+
+  box.replaceChildren(
+    el("strong", null, "OpenVPN 3 is needed"),
+    el("div", null, info.automatic
+      ? "This app connects through OpenVPN 3, which isn't installed yet. It can be installed for you."
+      : `This app connects through OpenVPN 3. Automatic installation isn't available for ${info.distro}; install the openvpn3 package, then reopen the app.`),
+    actions,
+    status,
+    el("code", null, error),
+  );
+  box.className = "notice setup";
+  render();
+}
+
+let polling = false;
+async function startPolling() {
+  if (polling) return;
+  polling = true;
+  await loadProfiles();
+  await refresh();
+  setInterval(refresh, 1000);
+  // Profiles can also be added with the openvpn3 command line tool.
+  setInterval(loadProfiles, 10000);
 }
 
 function setupTabs() {
@@ -509,12 +558,7 @@ async function main() {
   checkUpdate();
   setInterval(checkUpdate, UPDATE_CHECK_MS);
 
-  if (!(await checkBackend())) return;
-  await loadProfiles();
-  await refresh();
-  setInterval(refresh, 1000);
-  // Profiles can also be added with the openvpn3 command line tool.
-  setInterval(loadProfiles, 10000);
+  if (await checkBackend()) startPolling();
 }
 
 main();

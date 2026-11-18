@@ -1,4 +1,5 @@
 pub mod ovpn3;
+pub mod setup;
 
 use std::{path::PathBuf, sync::Mutex};
 
@@ -108,6 +109,19 @@ fn open_url(url: String, app: AppHandle) -> Res<()> {
 }
 
 #[tauri::command]
+fn setup_info() -> setup::SetupInfo {
+    setup::info()
+}
+
+/// Installs openvpn3-linux (asks for the administrator password).
+#[tauri::command]
+async fn install_openvpn3() -> Res<()> {
+    tauri::async_runtime::spawn_blocking(setup::install)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 fn repo_url() -> &'static str {
     REPO_URL
 }
@@ -207,6 +221,8 @@ pub fn run() {
             restart,
             open_url,
             repo_url,
+            setup_info,
+            install_openvpn3,
             check_update,
             install_update,
         ])

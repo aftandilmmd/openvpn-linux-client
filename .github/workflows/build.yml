@@ -29,11 +29,8 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev openvpn easy-rsa
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://packages.openvpn.net/packages-repo.gpg | sudo tee /etc/apt/keyrings/openvpn.asc >/dev/null
-          echo "deb [signed-by=/etc/apt/keyrings/openvpn.asc] https://packages.openvpn.net/openvpn3/debian jammy main" | sudo tee /etc/apt/sources.list.d/openvpn3.list
-          sudo apt-get update -q
-          sudo apt-get install -y -q openvpn3
+      - name: Install openvpn3 with the app's own installer script
+        run: sudo src-tauri/scripts/install-openvpn3-apt.sh jammy
       - name: Unit tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
       - name: Import, sign in, connect, disconnect
@@ -48,9 +45,27 @@ jobs:
           busctl --system list | grep -i openvpn || true
           sudo journalctl --no-pager -b | grep -iE "openvpn|dbus-daemon" | tail -80 || true
 
+  install-scripts:
+    name: openvpn3 installer (${{ matrix.image }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:bookworm
+            run: sh /w/install-openvpn3-apt.sh bookworm && dpkg -s openvpn3 | grep Status
+          - image: ubuntu:24.04
+            run: sh /w/install-openvpn3-apt.sh noble && dpkg -s openvpn3 | grep Status
+          - image: fedora:latest
+            run: sh /w/install-openvpn3-dnf.sh && rpm -q openvpn3-client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Bare images without curl or wget also exercise the script's fallback.
+      - run: docker run --rm -v "$PWD/src-tauri/scripts:/w:ro" ${{ matrix.image }} sh -c '${{ matrix.run }}'
+
   build:
     name: Build ${{ matrix.arch }}
-    needs: e2e
+    needs: [e2e, install-scripts]
     strategy:
       fail-fast: false
       matrix:

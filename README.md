@@ -34,25 +34,15 @@ It uses **openvpn3-linux**, OpenVPN's own Linux client, and talks to its service
 
 ## Installing
 
-**1. Install openvpn3** (once). Follow OpenVPN's [official instructions](https://community.openvpn.net/openvpn/wiki/OpenVPN3Linux), or on Ubuntu / Debian:
+Download the file for your system from the [latest release](https://github.com/aftandilmmd/openvpn-linux-client/releases/latest):
 
-```sh
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://packages.openvpn.net/packages-repo.gpg | sudo tee /etc/apt/keyrings/openvpn.asc >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/openvpn.asc] https://packages.openvpn.net/openvpn3/debian $(. /etc/os-release && echo $VERSION_CODENAME) main" \
-  | sudo tee /etc/apt/sources.list.d/openvpn3.list
-sudo apt update && sudo apt install openvpn3
-```
-
-On Fedora: `sudo dnf copr enable dsommers/openvpn3 && sudo dnf install openvpn3-client`.
-
-**2. Install the app** from the [latest release](https://github.com/aftandilmmd/openvpn-linux-client/releases/latest):
-
-- **Ubuntu / Debian:** `sudo apt install ./Linux*_amd64.deb` (`arm64` on ARM)
-- **Fedora / openSUSE:** `sudo dnf install ./Linux*.x86_64.rpm`
+- **Ubuntu / Debian:** the `.deb` (`amd64`, or `arm64` on ARM). Open it with your software center, or run `sudo apt install ./Linux*_amd64.deb`.
+- **Fedora:** the `.rpm`, or `sudo dnf install ./Linux*.x86_64.rpm`.
 - **Any distribution:** the `.AppImage`. Run `chmod +x Linux*.AppImage`, then start it.
 
-Open the app, click **+** and choose your `.ovpn` file. Profiles you already imported with the `openvpn3` command line show up automatically.
+On first start the app checks for OpenVPN 3, the official engine it runs on. If it's missing, click **Install OpenVPN 3** and enter your password: the app adds OpenVPN's official repository and installs it for you (Ubuntu, Debian and their derivatives, and Fedora). On other distributions, install the `openvpn3` package by following [OpenVPN's guide](https://community.openvpn.net/openvpn/wiki/OpenVPN3Linux).
+
+Then click **+** and choose your `.ovpn` file. Profiles you already imported with the `openvpn3` command line show up automatically.
 
 ## Updates
 
@@ -66,8 +56,8 @@ No. It's an independent app built on OpenVPN's official open-source Linux client
 **My profile refers to separate `ca.crt` / `client.key` files.**
 That's fine. Keep them next to the `.ovpn` file when importing and the app embeds them into the profile.
 
-**It says openvpn3-linux is not available.**
-Install the `openvpn3` package (step 1) and reopen the app.
+**Why does it need OpenVPN 3 at all?**
+OpenVPN 3 runs the tunnels in the background with the right permissions, so connecting never asks for a password and closing the app keeps you connected. It isn't in most distributions' default repositories, which is why the app installs it from OpenVPN's own repository instead of the package pulling it in.
 
 ## Building from source
 

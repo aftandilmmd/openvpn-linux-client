@@ -40,12 +40,12 @@
     ],
     "linux": {
       "deb": {
-        "depends": [
+        "recommends": [
           "openvpn3"
         ]
       },
       "rpm": {
-        "depends": [
+        "recommends": [
           "openvpn3-client"
         ]
       }

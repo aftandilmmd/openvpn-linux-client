@@ -107,6 +107,18 @@ main { flex: 1; overflow: hidden; display: flex; }
   user-select: text;
 }
 .notice code { font-size: 12px; }
+.notice.setup {
+  background: var(--card);
+  border-color: var(--line);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+.notice.setup strong { font-size: 15px; }
+.notice.setup code { color: var(--muted); font-size: 11px; }
+.setup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.setup-status { font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+.setup-status:empty { display: none; }
 
 .profiles { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 
